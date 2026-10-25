@@ -112,7 +112,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Build wheel and sdist
@@ -145,7 +145,7 @@ jobs:
       - name: Setup Python & Poetry
         uses: ./.github/actions/setup-python-poetry
       - name: Cache Doxygen and PlantUML
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~\AppData\Local\doxygen_creator
           key: doxygen-tools-${{ hashFiles('src/doxygen_creator/creator.py') }}
