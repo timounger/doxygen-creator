@@ -1,0 +1,49 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "run_example", // configuration name
+      "type": "debugpy", // debugging of python scripts
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",  // python interpretor
+      "request": "launch",  // launch: start debugging; attach: attach a running process
+      "program": "${workspaceFolder}/examples/create_doxygen.py",  // file to run
+      "cwd": "${workspaceFolder}/examples",  // Current Working Director
+      "args": ["-o"],  // arguments of running file
+      "console": "integratedTerminal",  // integratedTerminal: run in integrated terminal; externalTerminal; internalConsole
+      "justMyCode": false  // true: debug only my code; false: debug all code
+    },
+    {
+      "name": "doxygen_creator_cli",
+      "type": "debugpy",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "request": "launch",
+      "module": "doxygen_creator.cli",
+      "cwd": "${workspaceFolder}",
+      "args": ["-p", ".", "-n", "DoxygenCreator", "-o"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "doxy_py_checker",
+      "type": "debugpy",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "request": "launch",
+      "module": "doxygen_creator.doxy_py_checker",
+      "cwd": "${workspaceFolder}",
+      "args": ["-p", "src"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "run_pytest",
+      "type": "debugpy",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "request": "launch",
+      "module": "pytest",
+      "cwd": "${workspaceFolder}",
+      "args": ["-v"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}

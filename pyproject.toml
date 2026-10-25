@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=77"]  # SPDX license expression
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doxygen-creator"
+version = "1.0.0"
+description = "Create Doxygen documentation with uniform settings and Doxygen Awesome styling."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Timo Unger" }]
+dependencies = [
+    "requests>=2.31",
+    "packaging>=23.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pylint>=3.0", "mypy>=1.10"]
+
+[project.urls]
+Repository = "https://github.com/timounger/DoxygenCreator"
+
+[project.scripts]
+doxygen-creator = "doxygen_creator.cli:main"
+doxy-py-checker = "doxygen_creator.doxy_py_checker:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+doxygen_creator = ["assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.pylint.main]
+fail-on = ["F", "E", "missing-module-docstring", "missing-class-docstring", "missing-function-docstring"]
+fail-under = 8.0
+jobs = 1
+py-version = "3.10"
+recursive = true
+ignore = [".venv"]
+
+[tool.pylint.design]
+max-args = 5
+max-attributes = 7
+max-bool-expr = 5
+max-branches = 12
+max-locals = 15
+max-parents = 7
+max-public-methods = 20
+max-returns = 6
+max-statements = 50
+min-public-methods = 2
+
+[tool.pylint.format]
+max-line-length = 100
+max-module-lines = 1000
+
+[tool.pylint."messages control"]
+disable = ["raw-checker-failed",
+           "bad-inline-option",
+           "locally-disabled",
+           "file-ignored",
+           "suppressed-message",
+           "useless-suppression",
+           "deprecated-pragma",
+           "use-symbolic-message-instead",
+           "use-implicit-booleaness-not-comparison-to-string",
+           "use-implicit-booleaness-not-comparison-to-zero",
+           "line-too-long",
+           "too-many-locals",
+           "too-many-branches",
+           "too-many-statements",
+           "too-many-instance-attributes",
+           "too-many-public-methods",
+           "too-many-arguments",
+           "too-many-positional-arguments",
+           "too-many-lines",
+           "invalid-name",
+           "broad-exception-caught",
+           "fixme"]
+
+[tool.mypy]
+disable_error_code = ["no-untyped-call", "import-untyped"]
+ignore_missing_imports = true
+strict = true

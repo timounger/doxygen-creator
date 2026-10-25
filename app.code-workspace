@@ -1,0 +1,59 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    // VSCode General
+    "window.title": "${dirty}${rootNameShort}${separator}${activeEditorShort}${separator}${profileName}",
+    "editor.tabSize": 2,
+    // PlantUML
+    "plantuml.includepaths": ["../Documentation/DoxygenCreator"],
+    "plantuml.jar": "./Documentation/DoxygenCreator/plantuml.jar",
+    // Python
+    "[python]": {
+      "editor.detectIndentation": false,
+      "editor.insertSpaces": true,
+      "editor.tabSize": 4
+    },
+    // File settings
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+    "[plaintext]": {
+      "files.trimTrailingWhitespace": false
+    },
+    "[markdown]": {
+      "files.trimTrailingWhitespace": false
+    },
+    "[json]": {
+      "files.insertFinalNewline": false,
+      "files.trimFinalNewlines": false
+    },
+    // Spell checker languages
+    "cSpell.language": "en,de",
+    // other
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "git.openRepositoryInParentFolders": "always"
+  },
+  // VSCode Extensions
+  "extensions": {
+    "recommendations": [
+      "alphabotsec.vscode-eclipse-keybindings",
+      "eamodio.gitlens",
+      "GitHub.vscode-github-actions",
+      "streetsidesoftware.code-spell-checker",
+      "streetsidesoftware.code-spell-checker-german",
+      "jebbs.plantuml",
+      "esbenp.prettier-vscode",
+      "yzhang.markdown-all-in-one",
+      "yzane.markdown-pdf",
+      "DavidAnson.vscode-markdownlint",
+      "ms-python.python",
+      "ms-python.pylint",
+      "ms-python.mypy-type-checker",
+      "jock.svg"
+    ]
+  }
+}

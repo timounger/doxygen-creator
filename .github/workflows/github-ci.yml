@@ -1,0 +1,206 @@
+# ------------------------------------------------------------------------------
+# Central DoxygenCreator GitHub CI
+# Doc: https://docs.github.com/de/actions
+# ------------------------------------------------------------------------------
+name: DoxygenCreator CI
+
+# ------------------------------------------------------------------------------
+# Token Permission
+# Doc: https://docs.github.com/de/actions/reference/workflow-syntax-for-github-actions#permissions
+# ------------------------------------------------------------------------------
+permissions:
+  contents: write  # create tag and release
+
+defaults:
+  run:
+    shell: cmd
+
+env:
+  POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  DIST_NAME: dist
+  DIST_PATH: ./dist
+  DOXYGEN_OUTPUT_NAME: Output_Doxygen
+  DOXYGEN_OUTPUT_PATH: ./examples/Output_Doxygen
+
+# ------------------------------------------------------------------------------
+# WORKFLOW TRIGGER
+# ------------------------------------------------------------------------------
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:  # Allows you to run this workflow manually from the Actions tab
+    inputs:
+      create_release:
+        description: "Create Release"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ------------------------------------------------------------------------------
+# WORKFLOW JOBS
+# ------------------------------------------------------------------------------
+jobs:
+  check-version:
+    # Release gate: on push, release only if the version in pyproject.toml changed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.diff.outputs.version }}
+      release: ${{ steps.diff.outputs.release }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Compare version field with previous commit
+        id: diff
+        shell: bash
+        run: |
+          curr=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+          echo "version=$curr" >> "$GITHUB_OUTPUT"
+          release=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.create_release }}" = "true" ]; then
+            release=true
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            prev=$(git show HEAD~1:pyproject.toml 2>/dev/null | grep -m1 '^version' | cut -d'"' -f2 || echo "")
+            echo "previous=$prev current=$curr"
+            if [ "$prev" != "$curr" ]; then
+              release=true
+            fi
+          fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+  # ------------------------------------------------------------------------------
+  static-Test:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Python & Poetry
+        uses: ./.github/actions/setup-python-poetry
+      - name: Run PyLint
+        run: poetry run pylint src
+      - name: Run MyPy
+        run: poetry run mypy --config-file=pyproject.toml src
+  # ------------------------------------------------------------------------------
+  dynamic-Test:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]  # oldest supported and current
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Python & Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run PyTest
+        run: poetry run pytest -v -p no:faulthandler
+  # ------------------------------------------------------------------------------
+  build-Package:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install build
+          python -m build --outdir ${{ env.DIST_PATH }}
+      - name: Check installed wheel in clean environment
+        shell: pwsh
+        run: |
+          python -m venv "$env:RUNNER_TEMP\wheel-venv"
+          $python = "$env:RUNNER_TEMP\wheel-venv\Scripts\python.exe"
+          & $python -m pip install (Get-ChildItem ${{ env.DIST_PATH }}\*.whl).FullName
+          if ($LASTEXITCODE) { exit 1 }
+          & $python -c "import doxygen_creator; from doxygen_creator.creator import ASSETS_DIR; assert (ASSETS_DIR / 'header.html').is_file(); print(doxygen_creator.__version__)"
+          if ($LASTEXITCODE) { exit 1 }
+          & "$env:RUNNER_TEMP\wheel-venv\Scripts\doxygen-creator.exe" --help
+          if ($LASTEXITCODE) { exit 1 }
+      - name: Upload Package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.DIST_NAME }}
+          path: ${{ env.DIST_PATH }}
+  # ------------------------------------------------------------------------------
+  run-Example:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Python & Poetry
+        uses: ./.github/actions/setup-python-poetry
+      - name: Cache Doxygen and PlantUML
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\doxygen_creator
+          key: doxygen-tools-${{ hashFiles('src/doxygen_creator/creator.py') }}
+          restore-keys: doxygen-tools-
+      - name: Run Example
+        working-directory: ./examples
+        run: poetry run python create_doxygen.py
+      - name: Upload Doxygen Output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.DOXYGEN_OUTPUT_NAME }}
+          path: ${{ env.DOXYGEN_OUTPUT_PATH }}
+  # ------------------------------------------------------------------------------
+  create-Release:
+    if: needs.check-version.outputs.release == 'true'
+    needs: [check-version, static-Test, dynamic-Test, build-Package, run-Example]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Download Package
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.DIST_NAME }}
+          path: ${{ env.DIST_PATH }}
+      - name: Get Commit Message
+        shell: bash
+        run: echo "commit_message=$(git log -1 --pretty=format:"%s")" >> $GITHUB_ENV
+      - name: Create tag
+        shell: bash
+        run: |
+          tag_name="v${{ needs.check-version.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag_name" > /dev/null; then
+            echo "::error::Tag $tag_name already exists. Increase the version in pyproject.toml."
+            exit 1
+          fi
+          git tag "$tag_name"
+          git push origin "$tag_name"
+      - name: Create release and upload assets
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          name: "[DoxygenCreator] v${{ needs.check-version.outputs.version }}"
+          body: |
+            Git SHA: ${{ github.sha }}
+
+            ${{ env.commit_message }}
+
+            Installation:
+            ```
+            pip install "doxygen-creator @ git+https://github.com/${{ github.repository }}.git@v${{ needs.check-version.outputs.version }}"
+            ```
+          draft: false
+          prerelease: false
+          files: ${{ env.DIST_PATH }}/*
+          token: ${{ github.token }}
